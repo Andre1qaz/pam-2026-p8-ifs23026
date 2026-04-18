@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 10,
-                        backgroundColor: colorScheme.surface.withOpacity(0.5),
+                        backgroundColor: colorScheme.surface.withValues(alpha: 0.5),
                         valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
                       ),
                     ),

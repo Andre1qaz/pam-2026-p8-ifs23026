@@ -128,7 +128,7 @@ class _TodosDetailScreenState extends State<TodosDetailScreen> {
             text: 'Edit',
             icon: Icons.edit_outlined,
             onTap: () async {
-              final edited = await context.push<bool>(RouteConstants.todosEdit(todo.id));
+              final edited = await context.push<bool?>(RouteConstants.todosEdit(todo.id));
               if (edited == true && mounted) _loadData();
             },
           ),
@@ -217,8 +217,8 @@ class _TodosDetailScreenState extends State<TodosDetailScreen> {
                     size: 18,
                   ),
                   backgroundColor: todo.isDone
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.orange.withOpacity(0.1),
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
                 ),
               ],
             ),

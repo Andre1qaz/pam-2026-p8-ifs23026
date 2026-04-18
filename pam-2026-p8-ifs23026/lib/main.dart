@@ -55,7 +55,7 @@ class _DelcomTodosAppState extends State<DelcomTodosApp> {
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -77,11 +77,11 @@ class _DelcomTodosAppState extends State<DelcomTodosApp> {
             borderSide: const BorderSide(color: Colors.white24),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: const CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.white12),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            side: BorderSide(color: Colors.white12),
           ),
         ),
       ),

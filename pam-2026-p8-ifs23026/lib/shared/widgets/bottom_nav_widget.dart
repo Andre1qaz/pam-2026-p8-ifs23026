@@ -34,7 +34,6 @@ class BottomNavWidget extends StatelessWidget {
         }
       },
       destinations: _items.map((item) {
-        final isSelected = _items.indexOf(item) == selectedIndex;
         return NavigationDestination(
           icon: Icon(item.icon),
           selectedIcon: Icon(item.activeIcon),

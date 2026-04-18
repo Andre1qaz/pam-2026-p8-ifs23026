@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/route_constants.dart';
+import '../../data/models/todo_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/todo_provider.dart';
 import '../../shared/widgets/app_snackbar.dart';
@@ -83,54 +84,59 @@ class _TodosScreenState extends State<TodosScreen> {
 
           // ── Content ──
           Expanded(
-            child: switch (provider.status) {
-              TodoStatus.loading || TodoStatus.initial when provider.todos.isEmpty =>
-                  const LoadingWidget(message: 'Memuat todo...'),
-              TodoStatus.error =>
-                  AppErrorWidget(message: provider.errorMessage, onRetry: _loadData),
-              _ => provider.todos.isEmpty
-                  ? _EmptyState()
-                  : RefreshIndicator(
-                      onRefresh: () async => _loadData(),
-                      child: ListView.separated(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                        itemCount: provider.todos.length + (provider.isLoadingMore ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) {
-                          if (i == provider.todos.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          }
-                          final todo = provider.todos[i];
-                          return _TodoCard(
-                            todo: todo,
-                            onTap: () => context
-                                .push(RouteConstants.todosDetail(todo.id))
-                                .then((_) => _loadData()),
-                            onToggle: () async {
-                              final success = await provider.editTodo(
-                                authToken:   token,
-                                todoId:      todo.id,
-                                title:       todo.title,
-                                description: todo.description,
-                                isDone:      !todo.isDone,
-                              );
-                              if (!success && mounted) {
-                                showAppSnackBar(context,
-                                    message: provider.errorMessage,
-                                    type: SnackBarType.error);
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-            },
+            child: _buildBody(provider, token),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBody(TodoProvider provider, String token) {
+    final isFirstLoad = (provider.status == TodoStatus.loading ||
+            provider.status == TodoStatus.initial) &&
+        provider.todos.isEmpty;
+
+    if (isFirstLoad) return const LoadingWidget(message: 'Memuat todo...');
+    if (provider.status == TodoStatus.error) {
+      return AppErrorWidget(message: provider.errorMessage, onRetry: _loadData);
+    }
+    if (provider.todos.isEmpty) return const _EmptyState();
+
+    return RefreshIndicator(
+      onRefresh: () async => _loadData(),
+      child: ListView.separated(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        itemCount: provider.todos.length + (provider.isLoadingMore ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, i) {
+          if (i == provider.todos.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final todo = provider.todos[i];
+          return _TodoCard(
+            todo: todo,
+            onTap: () => context
+                .push(RouteConstants.todosDetail(todo.id))
+                .then((_) => _loadData()),
+            onToggle: () async {
+              final success = await provider.editTodo(
+                authToken:   token,
+                todoId:      todo.id,
+                title:       todo.title,
+                description: todo.description,
+                isDone:      !todo.isDone,
+              );
+              if (!success && mounted) {
+                showAppSnackBar(context,
+                    message: provider.errorMessage, type: SnackBarType.error);
+              }
+            },
+          );
+        },
       ),
     );
   }
@@ -146,9 +152,9 @@ class _FilterBar extends StatelessWidget {
     required this.pending,
   });
 
-  final TodoFilter          current;
+  final TodoFilter               current;
   final ValueChanged<TodoFilter> onChanged;
-  final int total, done, pending;
+  final int                      total, done, pending;
 
   @override
   Widget build(BuildContext context) {
@@ -158,20 +164,20 @@ class _FilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _FilterChip(
+            _Chip(
               label: 'Semua ($total)',
               selected: current == TodoFilter.all,
               onTap: () => onChanged(TodoFilter.all),
             ),
             const SizedBox(width: 8),
-            _FilterChip(
+            _Chip(
               label: 'Selesai ($done)',
               selected: current == TodoFilter.done,
               onTap: () => onChanged(TodoFilter.done),
               color: Colors.green,
             ),
             const SizedBox(width: 8),
-            _FilterChip(
+            _Chip(
               label: 'Belum ($pending)',
               selected: current == TodoFilter.pending,
               onTap: () => onChanged(TodoFilter.pending),
@@ -184,8 +190,8 @@ class _FilterBar extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
+class _Chip extends StatelessWidget {
+  const _Chip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -206,14 +212,14 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: activeColor.withOpacity(0.15),
+      selectedColor: activeColor.withValues(alpha: 0.15),
       checkmarkColor: activeColor,
       labelStyle: TextStyle(
         color: selected ? activeColor : null,
         fontWeight: selected ? FontWeight.bold : null,
       ),
       side: BorderSide(
-        color: selected ? activeColor : colorScheme.outline.withOpacity(0.5),
+        color: selected ? activeColor : colorScheme.outline.withValues(alpha: 0.5),
       ),
     );
   }
@@ -221,6 +227,8 @@ class _FilterChip extends StatelessWidget {
 
 // ── Empty State ───────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -251,7 +259,7 @@ class _TodoCard extends StatelessWidget {
     required this.onToggle,
   });
 
-  final dynamic      todo;
+  final TodoModel    todo;
   final VoidCallback onTap;
   final VoidCallback onToggle;
 
@@ -287,9 +295,7 @@ class _TodoCard extends StatelessWidget {
           todo.description,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: todo.isDone ? colorScheme.outline : null,
-          ),
+          style: TextStyle(color: todo.isDone ? colorScheme.outline : null),
         ),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
       ),

@@ -2,7 +2,6 @@
 // Andre Christian Saragih - ifs23026
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../data/models/todo_model.dart';
 import '../data/services/todo_repository.dart';
@@ -19,17 +18,17 @@ class TodoProvider extends ChangeNotifier {
   final TodoRepository _repository;
 
   // ── State ────────────────────────────────────
-  TodoStatus    _status       = TodoStatus.initial;
-  List<TodoModel> _todos      = [];
-  TodoModel?    _selectedTodo;
-  String        _errorMessage = '';
-  String        _searchQuery  = '';
-  TodoFilter    _filter       = TodoFilter.all;
+  TodoStatus      _status       = TodoStatus.initial;
+  List<TodoModel> _todos        = [];
+  TodoModel?      _selectedTodo;
+  String          _errorMessage = '';
+  String          _searchQuery  = '';
+  TodoFilter      _filter       = TodoFilter.all;
 
   // ── Pagination State ──────────────────────────
-  int  _currentPage  = 1;
-  int  _totalPages   = 1;
-  int  _total        = 0;
+  int  _currentPage   = 1;
+  int  _totalPages    = 1;
+  int  _total         = 0;
   bool _isLoadingMore = false;
   static const int _perPage = 10;
 
@@ -43,17 +42,17 @@ class TodoProvider extends ChangeNotifier {
   int         get total         => _total;
 
   List<TodoModel> get todos {
-    List<TodoModel> result = List.unmodifiable(_todos);
+    List<TodoModel> filtered;
     switch (_filter) {
       case TodoFilter.done:
-        result = _todos.where((t) => t.isDone).toList();
+        filtered = _todos.where((t) => t.isDone).toList();
       case TodoFilter.pending:
-        result = _todos.where((t) => !t.isDone).toList();
+        filtered = _todos.where((t) => !t.isDone).toList();
       case TodoFilter.all:
-        result = List.unmodifiable(_todos);
+        filtered = List.of(_todos);
     }
-    if (_searchQuery.isEmpty) return result;
-    return result
+    if (_searchQuery.isEmpty) return filtered;
+    return filtered
         .where((t) => t.title.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
   }
@@ -62,7 +61,7 @@ class TodoProvider extends ChangeNotifier {
   int get doneTodos    => _todos.where((t) => t.isDone).length;
   int get pendingTodos => _todos.where((t) => !t.isDone).length;
 
-  // ── Load All Todos (refresh / first page) ──
+  // ── Load All Todos (refresh / first page) ────
   Future<void> loadTodos({required String authToken, bool reset = true}) async {
     if (reset) {
       _currentPage = 1;
@@ -90,7 +89,7 @@ class TodoProvider extends ChangeNotifier {
     }
   }
 
-  /// Muat halaman berikutnya (pagination saat scroll ke bawah)
+  /// Muat halaman berikutnya (infinite scroll)
   Future<void> loadMoreTodos({required String authToken}) async {
     if (!hasMore || _isLoadingMore) return;
     _isLoadingMore = true;
@@ -157,73 +156,77 @@ class TodoProvider extends ChangeNotifier {
     required String todoId,
     required String title,
     required String description,
-    required bool isDone,
+    required bool   isDone,
   }) async {
     _setStatus(TodoStatus.loading);
-    final result = await _repository.updateTodo(
+    final updateResult = await _repository.updateTodo(
       authToken: authToken, todoId: todoId,
       title: title, description: description, isDone: isDone,
     );
-    if (result.success) {
-      final results = await Future.wait([
-        _repository.getTodoById(authToken: authToken, todoId: todoId),
-        _repository.getTodos(authToken: authToken, page: 1, perPage: _todos.length.clamp(1, 100)),
-      ]);
-
-      final detailResult = results[0];
-      final listResult   = results[1];
-
-      if (detailResult.success && detailResult.data != null) {
-        _selectedTodo = detailResult.data as TodoModel;
-      }
-      if (listResult.success && listResult.data != null) {
-        final paged = listResult.data as TodoPaginatedModel;
-        _todos      = paged.todos;
-        _total      = paged.total;
-        _totalPages = paged.totalPages;
-      }
-      _setStatus(TodoStatus.success);
-      return true;
+    if (!updateResult.success) {
+      _errorMessage = updateResult.message;
+      _setStatus(TodoStatus.error);
+      return false;
     }
-    _errorMessage = result.message;
-    _setStatus(TodoStatus.error);
-    return false;
+
+    // Fetch detail & list secara paralel
+    final detailResult = await _repository.getTodoById(authToken: authToken, todoId: todoId);
+    final listResult   = await _repository.getTodos(
+      authToken: authToken,
+      page: 1,
+      perPage: _todos.length.clamp(1, 100),
+    );
+
+    if (detailResult.success && detailResult.data != null) {
+      _selectedTodo = detailResult.data;
+    }
+    if (listResult.success && listResult.data != null) {
+      _todos      = listResult.data!.todos;
+      _total      = listResult.data!.total;
+      _totalPages = listResult.data!.totalPages;
+    }
+
+    _setStatus(TodoStatus.success);
+    return true;
   }
 
   // ── Update Cover ──────────────────────────────
   Future<bool> updateCover({
     required String authToken,
     required String todoId,
-    File? imageFile,
+    File?    imageFile,
     Uint8List? imageBytes,
-    String imageFilename = 'cover.jpg',
+    String   imageFilename = 'cover.jpg',
   }) async {
     _setStatus(TodoStatus.loading);
-    final result = await _repository.updateTodoCover(
+    final coverResult = await _repository.updateTodoCover(
       authToken: authToken, todoId: todoId,
       imageFile: imageFile, imageBytes: imageBytes, imageFilename: imageFilename,
     );
-    if (result.success) {
-      final results = await Future.wait([
-        _repository.getTodoById(authToken: authToken, todoId: todoId),
-        _repository.getTodos(authToken: authToken, page: 1, perPage: _todos.length.clamp(1, 100)),
-      ]);
-
-      if (results[0].success && results[0].data != null) {
-        _selectedTodo = results[0].data as TodoModel;
-      }
-      if (results[1].success && results[1].data != null) {
-        final paged = results[1].data as TodoPaginatedModel;
-        _todos      = paged.todos;
-        _total      = paged.total;
-        _totalPages = paged.totalPages;
-      }
-      _setStatus(TodoStatus.success);
-      return true;
+    if (!coverResult.success) {
+      _errorMessage = coverResult.message;
+      _setStatus(TodoStatus.error);
+      return false;
     }
-    _errorMessage = result.message;
-    _setStatus(TodoStatus.error);
-    return false;
+
+    final detailResult = await _repository.getTodoById(authToken: authToken, todoId: todoId);
+    final listResult   = await _repository.getTodos(
+      authToken: authToken,
+      page: 1,
+      perPage: _todos.length.clamp(1, 100),
+    );
+
+    if (detailResult.success && detailResult.data != null) {
+      _selectedTodo = detailResult.data;
+    }
+    if (listResult.success && listResult.data != null) {
+      _todos      = listResult.data!.todos;
+      _total      = listResult.data!.total;
+      _totalPages = listResult.data!.totalPages;
+    }
+
+    _setStatus(TodoStatus.success);
+    return true;
   }
 
   // ── Delete Todo ───────────────────────────────
@@ -232,7 +235,7 @@ class TodoProvider extends ChangeNotifier {
     final result = await _repository.deleteTodo(authToken: authToken, todoId: todoId);
     if (result.success) {
       _todos.removeWhere((t) => t.id == todoId);
-      _total      = (_total - 1).clamp(0, double.maxFinite.toInt());
+      _total        = (_total - 1).clamp(0, double.maxFinite.toInt());
       _selectedTodo = null;
       _setStatus(TodoStatus.success);
       return true;
