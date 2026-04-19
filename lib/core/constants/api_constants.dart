@@ -5,21 +5,28 @@ class ApiConstants {
   ApiConstants._();
 
   static const String baseUrl =
-      'https://pam-2026-p8-ifs23026-be.11s23026.fun:8080/';
+      "https://pam-2026-p8-ifs23026-be.11s23026.fun:8080";
 
-  // ── Auth ──────────────────────────────────
-  static const String authRegister = '/auth/register';
-  static const String authLogin    = '/auth/login';
-  static const String authLogout   = '/auth/logout';
-  static const String authRefresh  = '/auth/refresh-token';
-
-  // ── Users ─────────────────────────────────
-  static const String usersMe         = '/users/me';
-  static const String usersMePassword = '/users/me/password';
-  static const String usersMePhoto    = '/users/me/photo';
-
-  // ── Todos ─────────────────────────────────
+  // ── Base Path ─────────────────────────────
+  static const String auth  = '/auth';
+  static const String users = '/users';
   static const String todos = '/todos';
-  static String todoById(String id)  => '/todos/$id';
-  static String todoCover(String id) => '/todos/$id/cover';
+
+  // ── Auth ─────────────────────────────────
+  static const String authRegister = '$auth/register';
+  static const String authLogin    = '$auth/login';
+  static const String authLogout   = '$auth/logout';
+  static const String authRefresh  = '$auth/refresh-token';
+
+  // ── Users ────────────────────────────────
+  static const String usersMe         = '$users/me';
+  static const String usersMePassword = '$users/me/password';
+  static const String usersMePhoto    = '$users/me/photo';
+
+  // ── Todos ────────────────────────────────
+  static String todoById(String id) =>
+      '$todos/${id.trim()}';
+
+  static String todoCover(String id) =>
+      '$todos/${id.trim()}/cover';
 }
